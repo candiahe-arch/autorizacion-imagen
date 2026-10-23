@@ -180,6 +180,28 @@ input[aria-invalid="true"] { border-color: var(--danger); border-width: 2px; pad
 .status.bad strong { color: var(--danger); }
 .fine { margin: 0; font-size: 0.8125rem; color: var(--muted); max-width: 34rem; }
 
+.seg { display: flex; gap: 8px; }
+.seg button {
+  flex: 1 1 0;
+  min-height: 48px;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.seg button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.fieldset-title { font: 600 1.0625rem/1.3 var(--sans); margin: 22px 0 2px; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
 </head>
@@ -191,9 +213,18 @@ input[aria-invalid="true"] { border-color: var(--danger); border-width: 2px; pad
   </header>
 
   <form id="form" class="card" novalidate>
-    <h2>Tus datos</h2>
     <div class="field">
-      <label for="fName">Nombre completo y apellidos</label>
+      <label id="hKind">¿Quién completa este formulario?</label>
+      <div class="seg" id="kindSeg" role="group" aria-labelledby="hKind">
+        <button type="button" id="kindSelf" aria-pressed="true">Soy el Otorgante (mayor de edad)</button>
+        <button type="button" id="kindGuardian" aria-pressed="false">Soy padre, madre o tutor de un menor</button>
+      </div>
+      <p class="hint" id="hKindGuardian" hidden>El Otorgante es el menor cuya imagen se autoriza. Completa sus datos abajo y, más abajo, también los tuyos como padre, madre o tutor.</p>
+    </div>
+
+    <h2 id="hDatosOtorgante" style="margin-top:18px">Tus datos</h2>
+    <div class="field">
+      <label for="fName" id="lblName">Nombre completo y apellidos</label>
       <input id="fName" type="text" autocomplete="name" maxlength="70" placeholder="Ej.: María Fernanda Quispe Huamán" aria-describedby="eName">
       <p class="err" id="eName" hidden></p>
     </div>
@@ -209,11 +240,32 @@ input[aria-invalid="true"] { border-color: var(--danger); border-width: 2px; pad
       <p class="hint" id="hAddr">Hasta 90 caracteres</p>
       <p class="err" id="eAddr" hidden></p>
     </div>
+
+    <div id="tutorFields" hidden>
+      <p class="fieldset-title">Tus datos (padre, madre o tutor)</p>
+      <div class="field">
+        <label for="fTutorName">Nombre completo y apellidos</label>
+        <input id="fTutorName" type="text" autocomplete="name" maxlength="70" placeholder="Ej.: Luis Alberto Quispe Mamani" aria-describedby="eTutorName">
+        <p class="err" id="eTutorName" hidden></p>
+      </div>
+      <div class="field">
+        <label for="fTutorPhone">Número de teléfono</label>
+        <input id="fTutorPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="987 654 321" aria-describedby="hTutorPhone eTutorPhone">
+        <p class="hint" id="hTutorPhone">Celular de 9 dígitos que empieza con 9</p>
+        <p class="err" id="eTutorPhone" hidden></p>
+      </div>
+      <div class="field">
+        <label for="fTutorAddr">Dirección</label>
+        <input id="fTutorAddr" type="text" autocomplete="street-address" maxlength="90" placeholder="Calle o avenida, Mz/Lt, distrito, ciudad" aria-describedby="hTutorAddr eTutorAddr">
+        <p class="hint" id="hTutorAddr">Hasta 90 caracteres</p>
+        <p class="err" id="eTutorAddr" hidden></p>
+      </div>
+    </div>
   </form>
 
   <section class="card" aria-labelledby="hSig">
     <h2 id="hSig">Tu firma</h2>
-    <p class="sub">Dibuja tu firma con el dedo o el mouse. Se coloca en la línea del Otorgante, junto a la fecha.</p>
+    <p class="sub" id="subFirma">Dibuja tu firma con el dedo o el mouse. Se coloca en la línea del Otorgante, junto a la fecha.</p>
     <div class="padwrap" id="padwrap">
       <canvas id="pad" role="img" aria-label="Recuadro de firma. Dibuja con el dedo o el mouse."></canvas>
       <span class="rule" aria-hidden="true"></span>
@@ -234,8 +286,20 @@ input[aria-invalid="true"] { border-color: var(--danger); border-width: 2px; pad
       <div class="cell"><small>Número de Teléfono</small><span class="v empty" id="pvPhone">—</span></div>
       <div class="cell"><small>Dirección</small><span class="v empty" id="pvAddr">—</span></div>
       <div class="cell off"><small>Nombre del Fotógrafo</small></div>
-      <div class="cell"><small>Otorgante</small><img id="pvSig" alt="Tu firma" hidden><span class="v empty" id="pvSigPh">—</span></div>
-      <div class="cell"><small>Fecha</small><span class="v" id="pvDate">--/--/----</span></div>
+      <div class="cell" id="otorganteSigCell"><small>Otorgante</small><img id="pvSig" alt="Tu firma" hidden><span class="v empty" id="pvSigPh">—</span></div>
+      <div class="cell" id="otorganteDateCell"><small>Fecha</small><span class="v" id="pvDate">--/--/----</span></div>
+    </div>
+  </section>
+
+  <section class="preview" id="tutorPreview" aria-labelledby="hPrevTutor" hidden>
+    <h2 id="hPrevTutor">Consentimiento del Padre, Madre o Tutor</h2>
+    <div class="sheet">
+      <div class="cell"><small>Nombre del Padre o Tutor</small><span class="v empty" id="pvTutorName">—</span></div>
+      <div class="cell"><small>Teléfono</small><span class="v empty" id="pvTutorPhone">—</span></div>
+      <div class="cell"><small>Dirección</small><span class="v empty" id="pvTutorAddr">—</span></div>
+      <div class="cell off"></div>
+      <div class="cell"><small>Firma</small><img id="pvTutorSig" alt="Firma del padre, madre o tutor" hidden><span class="v empty" id="pvTutorSigPh">—</span></div>
+      <div class="cell"><small>Fecha</small><span class="v" id="pvTutorDate">--/--/----</span></div>
     </div>
   </section>
 
@@ -305,12 +369,23 @@ async function buildAuthorizationPdf(PDFLib, baseBytes, d) {
   // llenamos, se reemplaza cada rectángulo por uno blanco idéntico en el contenido de la página
   // (debajo de lo que escribimos) y se quita la anotación. Los demás rectángulos no se tocan.
   const { PDFName, PDFDict, PDFArray } = PDFLib;
+  const isGuardian = d.kind === 'guardian';
   const zones = [               // [x0, y0, x1, y1] en puntos, origen abajo-izquierda
     [36, H - 176, 396, H - 159],     // nombre
     [398, H - 176, 581, H - 159],    // teléfono
     [34, H - 200, 396, H - 185],     // dirección
-    [34, H - 595, 576, H - 572],     // fila del otorgante (firma y fecha)
   ];
+  if (isGuardian) {
+    // Fila "Consentimiento del Padre": nombre del padre/tutor, firma y fecha.
+    zones.push(
+      [34, H - 687, 240, H - 670.7],     // nombre del padre o tutor
+      [246, H - 687.4, 450, H - 671.3],  // firma del padre o tutor
+      [450, H - 687.9, 576, H - 670.9],  // fecha (fila del padre o tutor)
+      [450, H - 711.5, 576, H - 694.9],  // teléfono del padre o tutor
+    );
+  } else {
+    zones.push([34, H - 595, 576, H - 572]); // fila del otorgante (firma y fecha)
+  }
   const annots = page.node.Annots();
   if (annots) {
     const ctx = page.node.context;
@@ -331,17 +406,16 @@ async function buildAuthorizationPdf(PDFLib, baseBytes, d) {
     }
   }
 
-  // Casillas de "Partes de la Autorización" (debajo de cada etiqueta).
+  // Casillas de "Partes de la Autorización" (debajo de cada etiqueta). El Otorgante es
+  // siempre quien aparece en la imagen —si es menor de edad, estos datos son los del menor.
   put(d.name,    40, 172.5, 352, 10.5, 6);   // Nombre ("Otorgante")
   put(d.phone,  402, 172.5, 172, 10.5, 8);   // Número de Teléfono
   put(d.address, 40, 196.2, 352, 10,   6);   // Dirección
 
-  // Fila del Otorgante: firma a la izquierda de "Fecha", fecha debajo de su etiqueta.
-  put(d.date, 458, 590.4, 112, 10.5, 8);
-
-  if (d.signaturePng) {
-    const img = await doc.embedPng(d.signaturePng);
-    const x0 = 84, x1 = 446, top0 = 573.4, top1 = 593.8;
+  // Dibuja una firma (imagen PNG recortada) centrada dentro de una caja dada.
+  const drawSig = async (png, x0, x1, top0, top1) => {
+    if (!png) return;
+    const img = await doc.embedPng(png);
     const bw = x1 - x0, bh = top1 - top0;
     const k = Math.min(bw / img.width, bh / img.height);
     const w = img.width * k, h = img.height * k;
@@ -351,6 +425,19 @@ async function buildAuthorizationPdf(PDFLib, baseBytes, d) {
       width: w,
       height: h,
     });
+  };
+
+  if (isGuardian) {
+    // Sección "Consentimiento del Padre": la firma el padre, madre o tutor del menor.
+    put(d.tutorName,    38, 684,  198, 10, 6);    // Nombre del Padre o Tutor
+    put(d.date,        454, 684.5, 118, 10.5, 8); // Fecha (fila del padre o tutor)
+    put(d.tutorPhone,  454, 708,  118, 10, 7);     // Teléfono del padre o tutor
+    put(d.tutorAddress, 38, 708,  404, 10, 6);     // Dirección del padre o tutor
+    await drawSig(d.signaturePng, 248, 448, 672, 686.5);
+  } else {
+    // Fila del Otorgante: firma a la izquierda de "Fecha", fecha debajo de su etiqueta.
+    put(d.date, 458, 590.4, 112, 10.5, 8);
+    await drawSig(d.signaturePng, 84, 446, 573.4, 593.8);
   }
 
   return await doc.save();
@@ -372,14 +459,26 @@ if (typeof module !== 'undefined') module.exports = { buildAuthorizationPdf };
     pvName: $('#pvName'), pvPhone: $('#pvPhone'), pvAddr: $('#pvAddr'),
     pvSig: $('#pvSig'), pvSigPh: $('#pvSigPh'), pvDate: $('#pvDate'), today: $('#today'),
     btnPdf: $('#btnPdf'), btnBlank: $('#btnBlank'), btnClear: $('#btnClear'), status: $('#status'),
+    kindSelf: $('#kindSelf'), kindGuardian: $('#kindGuardian'), hKindGuardian: $('#hKindGuardian'),
+    hDatosOtorgante: $('#hDatosOtorgante'), lblName: $('#lblName'),
+    hSig: $('#hSig'), subFirma: $('#subFirma'),
+    tutorFields: $('#tutorFields'),
+    tutorName: $('#fTutorName'), tutorPhone: $('#fTutorPhone'), tutorAddr: $('#fTutorAddr'),
+    eTutorName: $('#eTutorName'), eTutorPhone: $('#eTutorPhone'), eTutorAddr: $('#eTutorAddr'),
+    hTutorPhone: $('#hTutorPhone'),
+    otorganteSigCell: $('#otorganteSigCell'), otorganteDateCell: $('#otorganteDateCell'),
+    tutorPreview: $('#tutorPreview'),
+    pvTutorName: $('#pvTutorName'), pvTutorPhone: $('#pvTutorPhone'), pvTutorAddr: $('#pvTutorAddr'),
+    pvTutorSig: $('#pvTutorSig'), pvTutorSigPh: $('#pvTutorSigPh'), pvTutorDate: $('#pvTutorDate'),
   };
-  const touched = { name: false, phone: false, addr: false };
+  const touched = { name: false, phone: false, addr: false, tutorName: false, tutorPhone: false, tutorAddr: false };
   let submitted = false;
+  let kind = 'self'; // 'self' | 'guardian'
 
   /* ---------- Fecha de hoy (hora del dispositivo) ---------- */
   const p2 = (n) => String(n).padStart(2, '0');
   const todayStr = () => { const d = new Date(); return p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear(); };
-  function paintDate() { const t = todayStr(); el.today.textContent = t; el.pvDate.textContent = t; }
+  function paintDate() { const t = todayStr(); el.today.textContent = t; el.pvDate.textContent = t; el.pvTutorDate.textContent = t; }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) paintDate(); });
 
   /* ---------- Validación ---------- */
@@ -410,6 +509,25 @@ if (typeof module !== 'undefined') module.exports = { buildAuthorizationPdf };
     if (s.length < 6 || !/\p{L}/u.test(s)) return 'Escribe tu dirección completa.';
     return '';
   }
+  function vTutorName(v) {
+    const s = cleanSpaces(v);
+    if (!s) return 'Escribe el nombre y apellidos del padre, madre o tutor.';
+    if (!NAME_RE.test(s)) return 'Usa solo letras. Se permiten tildes y la ñ.';
+    const words = s.split(' ').filter((w) => w.replace(/[^\p{L}]/gu, '').length >= 2);
+    if (words.length < 2) return 'Escribe el nombre y al menos un apellido.';
+    return '';
+  }
+  function vTutorPhone(d) {
+    if (!d) return 'Escribe el número de celular del padre, madre o tutor.';
+    if (d[0] !== '9') return 'El número debe empezar con 9.';
+    if (d.length < 9) { const n = 9 - d.length; return 'Faltan ' + n + (n === 1 ? ' dígito.' : ' dígitos.'); }
+    return '';
+  }
+  function vTutorAddr(v) {
+    const s = cleanSpaces(v);
+    if (s.length < 6 || !/\p{L}/u.test(s)) return 'Escribe la dirección completa del padre, madre o tutor.';
+    return '';
+  }
 
   function showErr(input, errEl, msg) {
     errEl.textContent = msg;
@@ -431,34 +549,81 @@ if (typeof module !== 'undefined') module.exports = { buildAuthorizationPdf };
     if (touched.name || submitted) showErr(el.name, el.eName, vName(el.name.value));
     if (touched.phone || submitted) showErr(el.phone, el.ePhone, vPhone(digits));
     if (touched.addr || submitted) showErr(el.addr, el.eAddr, vAddr(el.addr.value));
+
+    if (kind === 'guardian') {
+      const tName = cleanSpaces(el.tutorName.value);
+      const tDigits = phoneDigits(el.tutorPhone.value);
+      const tAddr = cleanSpaces(el.tutorAddr.value);
+
+      paintPv(el.pvTutorName, tName);
+      paintPv(el.pvTutorPhone, fmtPhone(tDigits));
+      paintPv(el.pvTutorAddr, tAddr);
+
+      el.hTutorPhone.textContent = tDigits.length ? tDigits.length + ' de 9 dígitos' : 'Celular de 9 dígitos que empieza con 9';
+
+      if (touched.tutorName || submitted) showErr(el.tutorName, el.eTutorName, vTutorName(el.tutorName.value));
+      if (touched.tutorPhone || submitted) showErr(el.tutorPhone, el.eTutorPhone, vTutorPhone(tDigits));
+      if (touched.tutorAddr || submitted) showErr(el.tutorAddr, el.eTutorAddr, vTutorAddr(el.tutorAddr.value));
+    }
   }
   function paintPv(node, text) {
     node.textContent = text || '—';
     node.classList.toggle('empty', !text);
   }
 
+  function setKind(next) {
+    kind = next;
+    const isGuardian = kind === 'guardian';
+    el.kindSelf.setAttribute('aria-pressed', String(!isGuardian));
+    el.kindGuardian.setAttribute('aria-pressed', String(isGuardian));
+    el.hKindGuardian.hidden = !isGuardian;
+    el.tutorFields.hidden = !isGuardian;
+    el.tutorPreview.hidden = !isGuardian;
+    el.otorganteSigCell.hidden = isGuardian;
+    el.otorganteDateCell.hidden = isGuardian;
+    el.hDatosOtorgante.textContent = isGuardian ? 'Datos del menor (Otorgante)' : 'Tus datos';
+    el.lblName.textContent = isGuardian ? 'Nombre completo y apellidos del menor' : 'Nombre completo y apellidos';
+    el.hSig.textContent = isGuardian ? 'Firma del padre, madre o tutor' : 'Tu firma';
+    el.subFirma.textContent = isGuardian
+      ? 'Dibuja tu firma con el dedo o el mouse. Se coloca en la sección "Consentimiento del Padre", junto a la fecha.'
+      : 'Dibuja tu firma con el dedo o el mouse. Se coloca en la línea del Otorgante, junto a la fecha.';
+    updateSigPreview();
+    refresh();
+  }
+  el.kindSelf.addEventListener('click', () => setKind('self'));
+  el.kindGuardian.addEventListener('click', () => setKind('guardian'));
+
   el.name.addEventListener('input', refresh);
   el.addr.addEventListener('input', refresh);
   el.name.addEventListener('blur', () => { touched.name = true; refresh(); });
   el.addr.addEventListener('blur', () => { touched.addr = true; refresh(); });
   el.phone.addEventListener('blur', () => { touched.phone = true; refresh(); });
-  el.phone.addEventListener('input', () => {
-    const input = el.phone;
-    const caret = input.selectionStart == null ? input.value.length : input.selectionStart;
-    const digitsBeforeCaret = input.value.slice(0, caret).replace(/\D/g, '').length;
-    const atEnd = caret >= input.value.length;
-    const formatted = fmtPhone(phoneDigits(input.value));
-    if (input.value !== formatted) {
-      input.value = formatted;
-      let pos = formatted.length;
-      if (!atEnd) {
-        let seen = 0; pos = 0;
-        while (pos < formatted.length && seen < digitsBeforeCaret) { if (/\d/.test(formatted[pos])) seen++; pos++; }
+  el.tutorName.addEventListener('input', refresh);
+  el.tutorAddr.addEventListener('input', refresh);
+  el.tutorName.addEventListener('blur', () => { touched.tutorName = true; refresh(); });
+  el.tutorAddr.addEventListener('blur', () => { touched.tutorAddr = true; refresh(); });
+  el.tutorPhone.addEventListener('blur', () => { touched.tutorPhone = true; refresh(); });
+
+  function wirePhoneFormat(input) {
+    input.addEventListener('input', () => {
+      const caret = input.selectionStart == null ? input.value.length : input.selectionStart;
+      const digitsBeforeCaret = input.value.slice(0, caret).replace(/\D/g, '').length;
+      const atEnd = caret >= input.value.length;
+      const formatted = fmtPhone(phoneDigits(input.value));
+      if (input.value !== formatted) {
+        input.value = formatted;
+        let pos = formatted.length;
+        if (!atEnd) {
+          let seen = 0; pos = 0;
+          while (pos < formatted.length && seen < digitsBeforeCaret) { if (/\d/.test(formatted[pos])) seen++; pos++; }
+        }
+        try { input.setSelectionRange(pos, pos); } catch (e) { /* algunos teclados no lo permiten */ }
       }
-      try { input.setSelectionRange(pos, pos); } catch (e) { /* algunos teclados no lo permiten */ }
-    }
-    refresh();
-  });
+      refresh();
+    });
+  }
+  wirePhoneFormat(el.phone);
+  wirePhoneFormat(el.tutorPhone);
 
   /* ---------- Firma ---------- */
   const ctx = el.pad.getContext('2d');
@@ -565,8 +730,13 @@ if (typeof module !== 'undefined') module.exports = { buildAuthorizationPdf };
 
   function updateSigPreview() {
     const r = strokes.length ? renderSignature(700) : null;
-    if (r) { el.pvSig.src = r.dataUrl; el.pvSig.hidden = false; el.pvSigPh.hidden = true; }
-    else { el.pvSig.hidden = true; el.pvSigPh.hidden = false; }
+    const img = kind === 'guardian' ? el.pvTutorSig : el.pvSig;
+    const ph = kind === 'guardian' ? el.pvTutorSigPh : el.pvSigPh;
+    const otherImg = kind === 'guardian' ? el.pvSig : el.pvTutorSig;
+    const otherPh = kind === 'guardian' ? el.pvSigPh : el.pvTutorSigPh;
+    otherImg.hidden = true; otherImg.removeAttribute('src'); otherPh.hidden = false;
+    if (r) { img.src = r.dataUrl; img.hidden = false; ph.hidden = true; }
+    else { img.hidden = true; ph.hidden = false; }
   }
 
   el.btnClear.addEventListener('click', () => {
@@ -641,8 +811,15 @@ if (typeof module !== 'undefined') module.exports = { buildAuthorizationPdf };
     el.eSig.hidden = sigOk;
     if (!sigOk) el.eSig.textContent = 'Falta tu firma. Fírmala en el recuadro de arriba.';
 
-    const firstBad = [[vName(el.name.value), el.name], [vPhone(phoneDigits(el.phone.value)), el.phone], [vAddr(el.addr.value), el.addr]]
-      .find((x) => x[0]);
+    const checks = [[vName(el.name.value), el.name], [vPhone(phoneDigits(el.phone.value)), el.phone], [vAddr(el.addr.value), el.addr]];
+    if (kind === 'guardian') {
+      checks.push(
+        [vTutorName(el.tutorName.value), el.tutorName],
+        [vTutorPhone(phoneDigits(el.tutorPhone.value)), el.tutorPhone],
+        [vTutorAddr(el.tutorAddr.value), el.tutorAddr]
+      );
+    }
+    const firstBad = checks.find((x) => x[0]);
     if (firstBad || !sigOk) {
       setStatus('bad', 'Faltan datos.', 'Revisa los campos marcados en rojo.');
       if (firstBad) firstBad[1].focus(); else el.wrap.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -650,6 +827,7 @@ if (typeof module !== 'undefined') module.exports = { buildAuthorizationPdf };
     }
 
     const name = cleanSpaces(el.name.value);
+    const tutorName = cleanSpaces(el.tutorName.value);
     runDownload(
       'pdf',
       async () => {
@@ -657,14 +835,18 @@ if (typeof module !== 'undefined') module.exports = { buildAuthorizationPdf };
         const sig = renderSignature(1800);
         paintDate();
         return buildAuthorizationPdf(window.PDFLib, b64ToBytes(BASE_PDF_B64), {
+          kind,
           name,
           phone: fmtPhone(phoneDigits(el.phone.value)),
           address: cleanSpaces(el.addr.value),
           date: todayStr(),
           signaturePng: sig.bytes,
+          tutorName,
+          tutorPhone: fmtPhone(phoneDigits(el.tutorPhone.value)),
+          tutorAddress: cleanSpaces(el.tutorAddr.value),
         });
       },
-      () => 'Autorizacion_uso_de_imagen_' + (slug(name) || 'Otorgante') + '.pdf',
+      () => 'Autorizacion_uso_de_imagen_' + (slug(kind === 'guardian' ? tutorName : name) || 'Otorgante') + '.pdf',
       (f) => 'Se guardó ' + f + '. Ábrelo y confirma que tus datos, la firma y la fecha estén en su lugar.'
     );
   });
